@@ -17,7 +17,7 @@
  * own output back and verifies the format before exiting.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
@@ -189,12 +189,19 @@ function selfCheck(outPath: string, expected: string[]): void {
   }
 }
 
+/** Write via a temp file in the same directory, then rename: a reader never sees a half-written confession. */
+function writeFileAtomic(outPath: string, text: string): void {
+  const tmpPath = `${outPath}.tmp`;
+  writeFileSync(tmpPath, text, "utf8");
+  renameSync(tmpPath, outPath);
+}
+
 function main(): void {
   const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "./output";
   mkdirSync(outDir, { recursive: true });
   const lines = buildConfession();
   const outPath = join(outDir, "entry.txt");
-  writeFileSync(outPath, lines.join("\n") + "\n", "utf8");
+  writeFileAtomic(outPath, lines.join("\n") + "\n");
   selfCheck(outPath, lines);
   console.log(`wrote ${outPath} (${lines.length} lines)`);
 }
